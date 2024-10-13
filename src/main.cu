@@ -1,6 +1,7 @@
 #include "image.hh"
 #include "pipeline.hh"
 #include "fix_cpu.cuh"
+#include "indus/indus.cu"
 
 #include <vector>
 #include <iostream>
@@ -45,8 +46,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         // You *must not* copy all the images and only then do the computations
         // You must get the image from the pipeline as they arrive and launch computations right away
         // There are still ways to speeds this process of course
+        /*
         images[i] = pipeline.get_image(i);
-        fix_image_cpu(images[i]);
+        fix_image_cpu(images[i]);*/
+        images[i] = pipeline.get_image(i);
+        fix_image_gpu(images[i]);
     }
 
     std::cout << "Done with compute, starting stats" << std::endl;
@@ -61,9 +65,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     #pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
+        /*
         auto& image = images[i];
         const int image_size = image.width * image.height;
         image.to_sort.total = std::reduce(image.buffer, image.buffer + image_size, 0);
+        */
+        const int image_size = images[i].width * images[i].height;
+        thrust::device_vector<int> d_buffer(images[i].buffer, images[i].buffer + image_size);
+        d_totals[i] = thrust::reduce(d_buffer.begin(), d_buffer.end(), 0, thrust::plus<int>());
     }
 
     // - All totals are known, sort images accordingly (OPTIONAL)
@@ -80,9 +89,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     });
 
     // TODO OPTIONAL : make it GPU compatible (aka faster)
+    /*
     std::sort(to_sort.begin(), to_sort.end(), [](ToSort a, ToSort b) {
         return a.total < b.total;
-    });
+    });*/
+    thrust::sort_by_key(d_totals.begin(), d_totals.end(), to_sort.begin());
 
     // TODO : Test here that you have the same results
     // You can compare visually and should compare image vectors values and "total" values
