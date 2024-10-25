@@ -8,6 +8,8 @@
 #include <sstream>
 #include <filesystem>
 #include <numeric>
+#include <raft/core/handle.hpp>
+#include <rmm/device_uvector.hpp>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
@@ -35,6 +37,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
     std::cout << "Done, starting compute" << std::endl;
 
+    size_t free_memory,total_memory;
+    cudaMemGetInfo(&free_memory,&total_memory);
+    raft::handle_t handle;
+
     #pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
@@ -44,8 +50,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         // But you should treat the pipeline as a pipeline :
         // You *must not* copy all the images and only then do the computations
         // You must get the image from the pipeline as they arrive and launch computations right away
-        // There are still ways to speeds this process of course
+        // There are still ways to speeds this process of course 
+        cudaStream_t stream = handle.get_stream();
         images[i] = pipeline.get_image(i);
+        rmm::device_uvector<int> device_buffer(images[i].size(),stream);
+        cudaMemcpyAsync(&device_buffer,images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream);
+        cudaStreamSynchronize(stream);
         fix_image_cpu(images[i]);
     }
 
@@ -99,9 +109,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     std::cout << "Done, the internet is safe now :)" << std::endl;
 
     // Cleaning
-    // TODO : Don't forget to update this if you change allocation style
-    for (int i = 0; i < nb_images; ++i)
-        free(images[i].buffer);
-
+    // DID : Don't forget to update this if you change allocation style
+    for (int i = 0; i < nb_images; ++i){
+        cudaFreeHost(images[i].buffer);
+    }
     return 0;
 }
