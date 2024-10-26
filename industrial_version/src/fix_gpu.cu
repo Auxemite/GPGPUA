@@ -59,7 +59,7 @@ void fix_image_gpu(Image& to_fix) {
     //cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice);
     std::cout << "Checkpoint 1" << std::endl;
 
-    thrust::positive<int> op;
+    thrust::negate<int> op;
     // #1 Compact - Build predicate vector
     thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), op);
     std::cout << "Checkpoint 2" << std::endl;
