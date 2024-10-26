@@ -49,6 +49,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         images[i] = pipeline.get_image(i);
         std::cout << "Fixing Image " << i << std::endl;
         fix_image_gpu(images[i]);
+        for (int j = 0; j < images[i].width * images[i].height; ++j)
+        {
+            if (images[i].buffer[j] == -27) {
+                std::cout << "Garbage value found in image " << i << " at index " << j << std::endl;
+                return 1;
+            }
+        }
     }
 
     std::cout << "Done with compute, starting stats" << std::endl;
