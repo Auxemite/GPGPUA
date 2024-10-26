@@ -76,37 +76,37 @@ void fix_image_gpu(Image& to_fix) {
     });
     std::cout << "Checkpoint 4" << std::endl;
 
-    // #2 Apply map to fix pixels
-    const int block_size = 256;
-    int grid_size = (image_size + block_size - 1) / block_size;
-    apply_pixel_transformation<<<grid_size, block_size>>>(d_buffer.data(), image_size);
-    std::cout << "Checkpoint 5" << std::endl;
+    // // #2 Apply map to fix pixels
+    // const int block_size = 256;
+    // int grid_size = (image_size + block_size - 1) / block_size;
+    // apply_pixel_transformation<<<grid_size, block_size>>>(d_buffer.data(), image_size);
+    // std::cout << "Checkpoint 5" << std::endl;
 
-    // #3 Histogram equalization
-    // Histogram initialization (use thrust to zero the histogram)
-    thrust::fill(d_histogram.begin(), d_histogram.end(), 0);
-    std::cout << "Checkpoint 6" << std::endl;
+    // // #3 Histogram equalization
+    // // Histogram initialization (use thrust to zero the histogram)
+    // thrust::fill(d_histogram.begin(), d_histogram.end(), 0);
+    // std::cout << "Checkpoint 6" << std::endl;
 
-    // Calculate histogram
-    histogram_kernel<<<grid_size, block_size>>>(d_buffer.data(), image_size, d_histogram.data());
-    std::cout << "Checkpoint 7" << std::endl;
+    // // Calculate histogram
+    // histogram_kernel<<<grid_size, block_size>>>(d_buffer.data(), image_size, d_histogram.data());
+    // std::cout << "Checkpoint 7" << std::endl;
 
-    // Compute the inclusive sum scan of the histogram
-    thrust::inclusive_scan(d_histogram.begin(), d_histogram.end(), d_histogram.begin());
-    std::cout << "Checkpoint 8" << std::endl;
+    // // Compute the inclusive sum scan of the histogram
+    // thrust::inclusive_scan(d_histogram.begin(), d_histogram.end(), d_histogram.begin());
+    // std::cout << "Checkpoint 8" << std::endl;
 
-    // Find the first non-zero value in the cumulative histogram (on device)
-    int cdf_min;
-    thrust::device_ptr<int> dev_histogram_ptr = thrust::device_pointer_cast(d_histogram.data());
-    auto first_non_zero = thrust::find_if(dev_histogram_ptr, dev_histogram_ptr + 256, [] __device__(int v) {
-        return v != 0;
-    });
-    cudaMemcpy(&cdf_min, thrust::raw_pointer_cast(first_non_zero), sizeof(int), cudaMemcpyDeviceToHost);
+    // // Find the first non-zero value in the cumulative histogram (on device)
+    // int cdf_min;
+    // thrust::device_ptr<int> dev_histogram_ptr = thrust::device_pointer_cast(d_histogram.data());
+    // auto first_non_zero = thrust::find_if(dev_histogram_ptr, dev_histogram_ptr + 256, [] __device__(int v) {
+    //     return v != 0;
+    // });
+    // cudaMemcpy(&cdf_min, thrust::raw_pointer_cast(first_non_zero), sizeof(int), cudaMemcpyDeviceToHost);
 
-    // Apply histogram equalization transformation
-    equalize_histogram<<<grid_size, block_size>>>(d_buffer.data(), image_size, d_histogram.data(), cdf_min);
-    std::cout << "Checkpoint 9" << std::endl;
+    // // Apply histogram equalization transformation
+    // equalize_histogram<<<grid_size, block_size>>>(d_buffer.data(), image_size, d_histogram.data(), cdf_min);
+    // std::cout << "Checkpoint 9" << std::endl;
 
-    // Copy the buffer back to host
-    cudaMemcpy(to_fix.buffer, d_buffer.data(), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost);
+    // // Copy the buffer back to host
+    // cudaMemcpy(to_fix.buffer, d_buffer.data(), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost);
 }
