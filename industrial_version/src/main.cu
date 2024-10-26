@@ -10,7 +10,7 @@
 #include <numeric>
 #include <raft/core/handle.hpp>
 #include <rmm/device_uvector.hpp>
-
+#include <thrust/async/reduce.h>
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
     // -- Pipeline initialization
@@ -37,8 +37,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
     std::cout << "Done, starting compute" << std::endl;
 
-    size_t free_memory,total_memory;
-    cudaMemGetInfo(&free_memory,&total_memory);
+    //size_t free_memory,total_memory;
+    //cudaMemGetInfo(&free_memory,&total_memory);
     raft::handle_t handle;
 
     #pragma omp parallel for
@@ -54,9 +54,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         cudaStream_t stream = handle.get_stream();
         images[i] = pipeline.get_image(i);
         rmm::device_uvector<int> device_buffer(images[i].size(),stream);
-        cudaMemcpyAsync(&device_buffer,images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream);
+        cudaMemcpyAsync(device_buffer.data(),images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream);
+
+        // fix image gpu indus
+        int init = 0;
+        cudaMemcpyAsync(images[i].buffer,device_buffer.data(),images[i].size()*sizeof(int),cudaMemcpyDeviceToHost,stream); 
+
+        //reduce to count and sort 
+        auto pol  = thrust::async::reduce(thrust::cuda::par.on(stream),device_buffer.begin(),device_buffer.end(),init); 
         cudaStreamSynchronize(stream);
-        fix_image_cpu(images[i]);
+        images[i].to_sort.total = pol.get();
     }
 
     std::cout << "Done with compute, starting stats" << std::endl;
@@ -68,13 +75,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // TODO : make it GPU compatible (aka faster)
     // You can use multiple CPU threads for your GPU version using openmp or not
     // Up to you :)
-    #pragma omp parallel for
+    /*#pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
         auto& image = images[i];
         const int image_size = image.width * image.height;
         image.to_sort.total = std::reduce(image.buffer, image.buffer + image_size, 0);
-    }
+    }*/
 
     // - All totals are known, sort images accordingly (OPTIONAL)
     // Moving the actual images is too expensive, sort image indices instead

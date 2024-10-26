@@ -1,6 +1,7 @@
 #include "image.hh"
 #include "pipeline.hh"
 #include "fix_cpu.cuh"
+#include "kernel.cuh"
 
 #include <vector>
 #include <iostream>
@@ -8,6 +9,8 @@
 #include <sstream>
 #include <filesystem>
 #include <numeric>
+#include <raft/core/handle.hpp>
+
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
@@ -34,6 +37,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // - One CPU thread is launched for each image
 
     std::cout << "Done, starting compute" << std::endl;
+    
+    raft::handle_t handle;
 
     #pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
@@ -44,9 +49,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         // But you should treat the pipeline as a pipeline :
         // You *must not* copy all the images and only then do the computations
         // You must get the image from the pipeline as they arrive and launch computations right away
-        // There are still ways to speeds this process of course
+        // There are still ways to speeds this process of course 
+        cudaStream_t stream = handle.get_stream();
         images[i] = pipeline.get_image(i);
-        fix_image_cpu(images[i]);
+        rmm::device_uvector<int> device_buffer(images[i].size(),stream);
+        cudaMemcpyAsync(device_buffer.data(),images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream);
+
+        //fix_image_gpu
+        cudaMemcpyAsync(images[i].buffer,device_buffer.data(),images[i].size()*sizeof(int),cudaMemcpyDeviceToHost,stream);
+
+        //reduce to do 
     }
 
     std::cout << "Done with compute, starting stats" << std::endl;
