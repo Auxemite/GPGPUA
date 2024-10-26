@@ -7,6 +7,16 @@
 #include <rmm/device_uvector.hpp>
 #include <cub/cub.cuh>
 
+#define CUDA_CHECK(call) \
+    { \
+        cudaError_t err = call; \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "CUDA error in file '%s' in line %i: %s.\n", \
+                    __FILE__, __LINE__, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+    }
+
 __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < image_size) {
@@ -47,14 +57,17 @@ void fix_image_gpu(Image& to_fix) {
 
     // Copy buffer from host to device
     cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice);
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // #1 Compact - Build predicate vector
     thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
         return val != garbage_val ? 1 : 0;
     });
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // Compute the exclusive sum of the predicate (compact step)
     thrust::exclusive_scan(d_predicate.begin(), d_predicate.end(), d_predicate.begin());
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // Scatter to the corresponding addresses
     thrust::for_each(thrust::make_counting_iterator(0), thrust::make_counting_iterator(to_fix.size()), [d_buffer = d_buffer.data(), d_predicate = d_predicate.data(), garbage_val] __device__(int idx) {
@@ -62,21 +75,26 @@ void fix_image_gpu(Image& to_fix) {
             d_buffer[d_predicate[idx]] = d_buffer[idx];
         }
     });
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // #2 Apply map to fix pixels
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
     apply_pixel_transformation<<<grid_size, block_size>>>(d_buffer.data(), image_size);
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // #3 Histogram equalization
     // Histogram initialization (use thrust to zero the histogram)
     thrust::fill(d_histogram.begin(), d_histogram.end(), 0);
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // Calculate histogram
     histogram_kernel<<<grid_size, block_size>>>(d_buffer.data(), image_size, d_histogram.data());
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // Compute the inclusive sum scan of the histogram
     thrust::inclusive_scan(d_histogram.begin(), d_histogram.end(), d_histogram.begin());
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // Find the first non-zero value in the cumulative histogram (on device)
     int cdf_min;
@@ -88,6 +106,7 @@ void fix_image_gpu(Image& to_fix) {
 
     // Apply histogram equalization transformation
     equalize_histogram<<<grid_size, block_size>>>(d_buffer.data(), image_size, d_histogram.data(), cdf_min);
+    CUDA_CHECK(cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice));
 
     // Copy the buffer back to host
     cudaMemcpy(to_fix.buffer, d_buffer.data(), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost);
