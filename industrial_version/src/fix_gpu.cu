@@ -78,10 +78,7 @@ void fix_image_gpu(Image& to_fix) {
     // for (std::size_t i = 0; i < d_predicate.size(); ++i)
     //     if (d_buffer[i] != garbage_val)
     //         d_buffer[d_predicate[i]] = d_buffer[i];
-    thrust::for_each(thrust::make_counting_iterator(0),
-                    thrust::make_counting_iterator(d_predicate.size()),
-                    [d_buffer = d_buffer.data(), d_predicate = d_predicate.data(), garbage_val] __device__(int idx)
-    {
+    thrust::for_each(thrust::make_counting_iterator(0), thrust::make_counting_iterator(d_predicate.size()), [d_buffer = d_buffer.data(), d_predicate = d_predicate.data(), garbage_val] __device__(int idx) {
         if (d_buffer[idx] != garbage_val) {
             d_buffer[d_predicate[idx]] = d_buffer[idx];
         }
