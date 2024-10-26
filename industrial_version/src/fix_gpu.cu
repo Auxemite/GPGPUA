@@ -18,7 +18,7 @@
         } \
     }
 
-void print_log(string message) {
+void print_log(char[] message) {
     bool debug = false;
     if (debug)
         std::cout << message << std::endl;
