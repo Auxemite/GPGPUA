@@ -56,7 +56,6 @@ void fix_image_gpu(Image& to_fix) {
     thrust::device_vector<int> d_histogram(256);
 
     // Copy buffer from host to device
-    //cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice);
     std::cout << "Checkpoint 1" << std::endl;
 
     // #1 Compact - Build predicate vector
@@ -78,6 +77,7 @@ void fix_image_gpu(Image& to_fix) {
     std::cout << "Checkpoint 4" << std::endl;
 
     // #2 Apply map to fix pixels
+    cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice);
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
     apply_pixel_transformation<<<grid_size, block_size>>>(d_buffer.data(), image_size);
