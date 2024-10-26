@@ -94,8 +94,8 @@ void fix_image_gpu(Image& to_fix) {
         else if (i % 4 == 3)
             d_buffer[i] -= 8;
     }
-    // const int block_size = 256;
-    // int grid_size = (image_size + block_size - 1) / block_size;
+    const int block_size = 256;
+    int grid_size = (image_size + block_size - 1) / block_size;
     // apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
     print_log("Checkpoint 5");
 
