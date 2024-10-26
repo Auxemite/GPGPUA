@@ -51,7 +51,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         fix_image_gpu(images[i]);
         for (int j = 0; j < images[i].width * images[i].height; ++j)
         {
-            if (images[i].buffer[j] == -27) {
+            if (images[i].buffer[j] < 0) {
                 std::cout << "Garbage value found in image " << i << " at index " << j << std::endl;
                 return 1;
             }
