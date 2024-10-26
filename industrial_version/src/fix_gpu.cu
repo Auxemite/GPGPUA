@@ -1,6 +1,7 @@
 #include "fix_cpu.cuh"
 #include "image.hh"
 
+#include <string>
 #include <thrust/device_vector.h>
 #include <thrust/scan.h>
 #include <thrust/transform.h>
@@ -18,7 +19,7 @@
     }
 
 void print_log(string message) {
-    debug = false;
+    bool debug = false;
     if (debug)
         std::cout << message << std::endl;
 }
