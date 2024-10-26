@@ -52,7 +52,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         for (int j = 0; j < images[i].width * images[i].height; ++j)
         {
             if (images[i].buffer[j] < 0) {
-                std::cout << "Garbage value found in image " << i << " at index " << j << std::endl;
+                std::cout << "Garbage value " << images[i].buffer[j] << " found in image " << i << " at index " << j << std::endl;
                 return 1;
             }
         }
