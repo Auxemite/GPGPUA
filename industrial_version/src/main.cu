@@ -34,7 +34,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
     // - One CPU thread is launched for each image
 
-    std::cout << "Done, starting compute" << std::endl;
+    std::cout << "Done, starting compute for " << nb_images << " images" << std::endl;
 
     // #pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)

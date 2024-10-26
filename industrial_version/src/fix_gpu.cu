@@ -17,6 +17,11 @@
         } \
     }
 
+void print_log(const string &message) {
+    if (false)
+        std::cout << message << std::endl;
+}
+
 __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < image_size) {
@@ -56,17 +61,17 @@ void fix_image_gpu(Image& to_fix) {
     thrust::device_vector<int> d_histogram(256);
 
     // Copy buffer from host to device
-    std::cout << "Checkpoint 1" << std::endl;
+    print_log("Checkpoint 1");
 
     // #1 Compact - Build predicate vector
     thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
         return val != garbage_val ? 1 : 0;
     });
-    std::cout << "Checkpoint 2" << std::endl;
+    print_log("Checkpoint 2");
 
     // Compute the exclusive sum of the predicate (compact step)
     thrust::exclusive_scan(d_predicate.begin(), d_predicate.end(), d_predicate.begin());
-    std::cout << "Checkpoint 3" << std::endl;
+    print_log("Checkpoint 3");
 
     // Scatter to the corresponding addresses
     thrust::for_each(thrust::make_counting_iterator(0), thrust::make_counting_iterator(to_fix.size()), [d_buffer = d_buffer.data(), d_predicate = d_predicate.data(), garbage_val] __device__(int idx) {
@@ -74,22 +79,22 @@ void fix_image_gpu(Image& to_fix) {
             d_buffer[d_predicate[idx]] = d_buffer[idx];
         }
     });
-    std::cout << "Checkpoint 4" << std::endl;
+    print_log("Checkpoint 4");
     
     // #2 Apply map to fix pixels
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
     apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
-    std::cout << "Checkpoint 5" << std::endl;
+    print_log("Checkpoint 5");
 
     // #3 Histogram equalization
     // Calculate histogram
     histogram_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()));
-    std::cout << "Checkpoint 6" << std::endl;
+    print_log("Checkpoint 6");
 
     // Compute the inclusive sum scan of the histogram
     thrust::inclusive_scan(d_histogram.begin(), d_histogram.end(), d_histogram.begin());
-    std::cout << "Checkpoint 7" << std::endl;
+    print_log("Checkpoint 7");
 
     // Find the first non-zero value in the cumulative histogram (on device)
     int cdf_min;
@@ -97,11 +102,11 @@ void fix_image_gpu(Image& to_fix) {
         return v != 0;
     });
     cudaMemcpy(&cdf_min, thrust::raw_pointer_cast(&(*first_non_zero)), sizeof(int), cudaMemcpyDeviceToHost);
-    std::cout << "Checkpoint 8" << std::endl;
+    print_log("Checkpoint 8");
 
     // Apply histogram equalization transformation
     equalize_histogram<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()), cdf_min);
-    std::cout << "Checkpoint 9" << std::endl;
+    print_log("Checkpoint 9");
 
     // Copy the buffer back to host
     cudaMemcpy(to_fix.buffer, thrust::raw_pointer_cast(d_buffer.data()), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost);
