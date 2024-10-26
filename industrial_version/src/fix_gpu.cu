@@ -61,7 +61,7 @@ void fix_image_gpu(Image& to_fix) {
 
     thrust::positive<int> op;
     // #1 Compact - Build predicate vector
-    thrust::transform(thrust::device, d_buffer.begin(), d_buffer.end(), d_predicate.begin(), op);
+    thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), op);
     std::cout << "Checkpoint 2" << std::endl;
 
     // Compute the exclusive sum of the predicate (compact step)
