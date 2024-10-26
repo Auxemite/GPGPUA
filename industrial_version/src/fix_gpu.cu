@@ -75,28 +75,23 @@ void fix_image_gpu(Image& to_fix) {
     print_log("Checkpoint 3");
 
     // Scatter to the corresponding addresses
-    thrust::for_each(thrust::make_counting_iterator(0), thrust::make_counting_iterator(to_fix.size()), [d_buffer = d_buffer.data(), d_predicate = d_predicate.data(), garbage_val] __device__(int idx) {
-        if (d_buffer[idx] != garbage_val) {
-            d_buffer[d_predicate[idx]] = d_buffer[idx];
-        }
-    });
+    for (std::size_t i = 0; i < d_predicate.size(); ++i)
+        if (d_buffer[i] != garbage_val)
+            d_buffer[d_predicate[i]] = d_buffer[i];
+    // thrust::for_each(thrust::make_counting_iterator(0),
+    //                 thrust::make_counting_iterator(to_fix.size()),
+    //                 [d_buffer = d_buffer.data(), d_predicate = d_predicate.data(), garbage_val] __device__(int idx)
+    // {
+    //     if (d_buffer[idx] != garbage_val) {
+    //         d_buffer[d_predicate[idx]] = d_buffer[idx];
+    //     }
+    // });
     print_log("Checkpoint 4");
     
     // #2 Apply map to fix pixels
-    for (int i = 0; i < image_size; ++i)
-    {
-        if (i % 4 == 0)
-            d_buffer[i] += 1;
-        else if (i % 4 == 1)
-            d_buffer[i] -= 5;
-        else if (i % 4 == 2)
-            d_buffer[i] += 3;
-        else if (i % 4 == 3)
-            d_buffer[i] -= 8;
-    }
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
-    // apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
+    apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
     print_log("Checkpoint 5");
 
     // #3 Histogram equalization
