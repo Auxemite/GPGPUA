@@ -58,7 +58,7 @@ void fix_image_gpu(Image& to_fix) {
     const int image_size = to_fix.width * to_fix.height;
     constexpr int garbage_val = -27;
 
-    // Allocate device memory using RMM for better memory management
+    // Allocate device memory using thurst
     thrust::device_vector<int> d_buffer(to_fix.buffer, to_fix.buffer + to_fix.size());
     thrust::device_vector<int> d_predicate(to_fix.size(), 0);
     thrust::device_vector<int> d_histogram(256);
@@ -83,9 +83,20 @@ void fix_image_gpu(Image& to_fix) {
     print_log("Checkpoint 4");
     
     // #2 Apply map to fix pixels
-    const int block_size = 256;
-    int grid_size = (image_size + block_size - 1) / block_size;
-    apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
+    for (int i = 0; i < image_size; ++i)
+    {
+        if (i % 4 == 0)
+            d_buffer[i] += 1;
+        else if (i % 4 == 1)
+            d_buffer[i] -= 5;
+        else if (i % 4 == 2)
+            d_buffer[i] += 3;
+        else if (i % 4 == 3)
+            d_buffer[i] -= 8;
+    }
+    // const int block_size = 256;
+    // int grid_size = (image_size + block_size - 1) / block_size;
+    // apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
     print_log("Checkpoint 5");
 
     // #3 Histogram equalization
