@@ -51,9 +51,9 @@ void fix_image_gpu(Image& to_fix) {
     constexpr int garbage_val = -27;
 
     // Allocate device memory using RMM for better memory management
-    rmm::device_uvector<int> d_buffer(to_fix.size(), rmm::cuda_stream_default);
-    rmm::device_uvector<int> d_predicate(to_fix.size(), rmm::cuda_stream_default);
-    rmm::device_uvector<int> d_histogram(256, rmm::cuda_stream_default);
+    thrust::device_vector<int> d_buffer(to_fix.buffer, to_fix.buffer + to_fix.size());
+    thrust::device_vector<int> d_predicate(to_fix.size(), 0);
+    thrust::device_vector<int> d_histogram(256);
 
     // Copy buffer from host to device
     //cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice);
