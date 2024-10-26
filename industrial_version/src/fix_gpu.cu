@@ -59,9 +59,10 @@ void fix_image_gpu(Image& to_fix) {
     //cudaMemcpy(d_buffer.data(), to_fix.buffer, sizeof(int) * to_fix.size(), cudaMemcpyHostToDevice);
     std::cout << "Checkpoint 1" << std::endl;
 
-    thrust::negate<int> op;
     // #1 Compact - Build predicate vector
-    thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), op);
+    thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
+        return val != garbage_val ? 1 : 0;
+    });
     std::cout << "Checkpoint 2" << std::endl;
 
     // Compute the exclusive sum of the predicate (compact step)
