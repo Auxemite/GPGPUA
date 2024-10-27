@@ -46,6 +46,7 @@ __global__ void scatter_kernel(int* buffer, int* predicate, int image_size, int 
             buffer[predicate[idx]] = buffer[idx];
         }
     }
+    __syncthreads();
 }
 
 __global__ void histogram_kernel(int* buffer, int image_size, int* histogram) {
