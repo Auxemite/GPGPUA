@@ -84,12 +84,12 @@ void fix_image_gpu(Image& to_fix) {
     print_log("Checkpoint 3");
 
     // Scatter to the corresponding addresses
+    const int block_size = 256;
+    int grid_size = (image_size + block_size - 1) / block_size;
     scatter_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_predicate.data()), image_size, garbage_val);
     print_log("Checkpoint 4");
     
     // #2 Apply map to fix pixels
-    const int block_size = 256;
-    int grid_size = (image_size + block_size - 1) / block_size;
     apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
     print_log("Checkpoint 5");
 
