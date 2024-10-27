@@ -62,6 +62,20 @@ void kernel_map_2(raft::device_span<T> buffer)
 }
 
 
+template <typename T>
+__global__
+void kernel_map_3(raft::device_span<T> buffer,raft::device_span<T> look)
+{
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x*blockDim.x+tid;
+    unsigned int mod = i%buffer.size();
+
+    if(i>=buffer.size())
+        return ;
+    buffer[i]+=look[mod];
+}
+
+
 void map_modulo(rmm::device_uvector<int>& buffer)
 {
     unsigned int min_block =(buffer.size()+4-1)/4;
@@ -73,5 +87,25 @@ void map_modulo(rmm::device_uvector<int>& buffer)
         nb_block+=4-(nb_block%4);
     }
     kernel_map<int><<<nb_block,t,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()));
-    //kernel_map_2<int><<<nb_block,t,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()));
 }
+
+void map_classique(rmm::device_uvector<int>& buffer)
+{
+    int nb_block = (buffer.size()+512-1)/512;
+    kernel_map_2<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()));
+}
+
+
+void map_look_up(rmm::device_uvector<int>& buffer)
+{
+    int nb_block = (buffer.size()+512-1)/512;
+    rmm::device_uvector<int> test(4,buffer.stream());
+    raft::device_span<int> oui(test.data(),test.size());
+    oui[0]=1;
+    oui[1]=-5;
+    oui[2]=3;
+    oui[3]=-8;
+    kernel_map_3<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()),oui);
+}
+
+
