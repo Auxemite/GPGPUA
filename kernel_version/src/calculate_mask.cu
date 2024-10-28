@@ -23,5 +23,5 @@ void kernel_mask(raft::device_span<T> buffer,raft::device_span<T> mask)
 void creation_mask(rmm::device_uvector<int>& buffer,rmm::device_uvector<int>& mask)
 {
     int nb_block = (mask.size()+128-1)/128;
-    kernel_mask<int,-27><<<nb_block,128,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()),raft::device_span<int>(mask.data(),mask.size()))
+    kernel_mask<int,-27><<<nb_block,128,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()),raft::device_span<int>(mask.data(),mask.size()));
 }

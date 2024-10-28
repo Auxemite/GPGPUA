@@ -1,7 +1,6 @@
 #include "image.hh"
 #include "pipeline.hh"
-#include "fix_cpu.cuh"
-#include "kernel.cuh"
+#include "fix_gpu.cuh"
 
 #include <vector>
 #include <iostream>
@@ -10,6 +9,7 @@
 #include <filesystem>
 #include <numeric>
 #include <raft/core/handle.hpp>
+#include <thrust/async/reduce.h>
 
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
@@ -53,12 +53,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         cudaStream_t stream = handle.get_stream();
         images[i] = pipeline.get_image(i);
         rmm::device_uvector<int> device_buffer(images[i].size(),stream);
-        cudaMemcpyAsync(device_buffer.data(),images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream);
+        cudaMemcpyAsync(device_buffer.data(),images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream); 
+        cudaStreamSynchronize(stream);
+        fix_image_gpu(images[i].width*images[i].height,device_buffer);
 
-        //fix_image_gpu
         cudaMemcpyAsync(images[i].buffer,device_buffer.data(),images[i].size()*sizeof(int),cudaMemcpyDeviceToHost,stream);
 
-        //reduce to do 
+        cudaStreamSynchronize(stream);
+        auto pol  = thrust::async::reduce(thrust::cuda::par.on(stream),device_buffer.begin(),device_buffer.end(),0); 
+        cudaStreamSynchronize(stream);
+        images[i].to_sort.total = pol.get();
     }
 
     std::cout << "Done with compute, starting stats" << std::endl;

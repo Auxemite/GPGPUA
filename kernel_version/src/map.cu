@@ -76,36 +76,36 @@ void kernel_map_3(raft::device_span<T> buffer,raft::device_span<T> look)
 }
 
 
-void map_modulo(rmm::device_uvector<int>& buffer)
+void map_modulo(rmm::device_uvector<int>& buffer,const int image_size)
 {
-    unsigned int min_block =(buffer.size()+4-1)/4;
+    unsigned int min_block =(image_size+4-1)/4;
     int taille_block =(min_block+32-1)/32;
     int t = std::min(taille_block*32,1024);
-    int nb_block = (buffer.size()+t-1)/t;
+    int nb_block = (image_size+t-1)/t;
     if(nb_block%4!=0)
     {
         nb_block+=4-(nb_block%4);
     }
-    kernel_map<int><<<nb_block,t,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()));
+    kernel_map<int><<<nb_block,t,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),image_size));
 }
 
-void map_classique(rmm::device_uvector<int>& buffer)
+void map_classique(rmm::device_uvector<int>& buffer,const int image_size)
 {
-    int nb_block = (buffer.size()+512-1)/512;
-    kernel_map_2<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()));
+    int nb_block = (image_size+512-1)/512;
+    kernel_map_2<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),image_size));
 }
 
 
-void map_look_up(rmm::device_uvector<int>& buffer)
+void map_look_up(rmm::device_uvector<int>& buffer,const int image_size)
 {
-    int nb_block = (buffer.size()+512-1)/512;
+    int nb_block = (image_size+512-1)/512;
     rmm::device_uvector<int> test(4,buffer.stream());
     raft::device_span<int> oui(test.data(),test.size());
     oui[0]=1;
     oui[1]=-5;
     oui[2]=3;
     oui[3]=-8;
-    kernel_map_3<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),buffer.size()),oui);
+    kernel_map_3<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),image_size),oui);
 }
 
 
