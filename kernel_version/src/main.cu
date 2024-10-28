@@ -38,11 +38,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 
     std::cout << "Done, starting compute" << std::endl;
     
-    raft::handle_t handle;
 
     #pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
+        raft::handle_t handle;
         // TODO : make it GPU compatible (aka faster)
         // You will need to copy images one by one on the GPU
         // You can store the images the way you want on the GPU
@@ -74,13 +74,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // TODO : make it GPU compatible (aka faster)
     // You can use multiple CPU threads for your GPU version using openmp or not
     // Up to you :)
-    #pragma omp parallel for
+    /*#pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
         auto& image = images[i];
         const int image_size = image.width * image.height;
         image.to_sort.total = std::reduce(image.buffer, image.buffer + image_size, 0);
-    }
+    }*/
 
     // - All totals are known, sort images accordingly (OPTIONAL)
     // Moving the actual images is too expensive, sort image indices instead
@@ -115,9 +115,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     std::cout << "Done, the internet is safe now :)" << std::endl;
 
     // Cleaning
-    // TODO : Don't forget to update this if you change allocation style
+    // DONE : Don't forget to update this if you change allocation style
     for (int i = 0; i < nb_images; ++i)
-        free(images[i].buffer);
+        cudaFreeHost(images[i].buffer);
 
     return 0;
 }

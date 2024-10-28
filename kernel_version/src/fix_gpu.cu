@@ -27,8 +27,11 @@ void fix_image_gpu(const int image_size,rmm::device_uvector<int>& to_fix)
 
     // #2 Apply map to fix pixels
 
+    cudaStreamSynchronize(to_fix.stream());
 
     map_classique(to_fix,image_size);
+    
+    cudaStreamSynchronize(to_fix.stream());
 
     /*
     // #3 Histogram equalization
