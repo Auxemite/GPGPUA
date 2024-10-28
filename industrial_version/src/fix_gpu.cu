@@ -25,33 +25,6 @@ void print_log(const std::string& message) {
         std::cout << message << std::endl;
 }
 
-__global__ void apply_pixel_transformation(int* buffer, int image_size) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < image_size) {
-        if (idx % 4 == 0)
-            buffer[idx] += 1;
-        else if (idx % 4 == 1)
-            buffer[idx] -= 5;
-        else if (idx % 4 == 2)
-            buffer[idx] += 3;
-        else if (idx % 4 == 3)
-            buffer[idx] -= 8;
-    }
-}
-
-__global__ void scatter_and_clear(int* buffer, int* predicate, int image_size, int new_size, int garbage_val) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < image_size) {
-        if (idx < new_size && buffer[idx] != garbage_val) {
-            buffer[predicate[idx]] = buffer[idx];
-        }
-        // Clear out old values beyond the compacted size
-        if (idx >= new_size) {
-            buffer[idx] = 0;
-        }
-    }
-}
-
 __global__ void histogram_kernel(int* buffer, int image_size, int* histogram) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < image_size) {
@@ -96,15 +69,25 @@ void fix_image_gpu(Image& to_fix) {
     // Copy compacted result back to d_buffer
     d_buffer = d_result;
     print_log("Checkpoint 4");
-    
+
     // #2 Apply map to fix pixels
-    const int block_size = 256;
-    int grid_size = (image_size + block_size - 1) / block_size;
-    apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
+    thrust::transform(d_buffer.begin(), d_buffer.end(), d_buffer.begin(), [] __device__(int pixel_val, int idx) {
+        if (idx % 4 == 0)
+            return pixel_val + 1;
+        else if (idx % 4 == 1)
+            return pixel_val - 5;
+        else if (idx % 4 == 2)
+            return pixel_val + 3;
+        else if (idx % 4 == 3)
+            return pixel_val - 8;
+        return pixel_val;
+    });
     print_log("Checkpoint 5");
 
     // #3 Histogram equalization
     // Calculate histogram
+    const int block_size = 256;
+    int grid_size = (image_size + block_size - 1) / block_size;
     histogram_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()));
     print_log("Checkpoint 6");
 
