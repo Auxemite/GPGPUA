@@ -39,14 +39,17 @@ __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     }
 }
 
-__global__ void scatter_kernel(int* buffer, int* predicate, int image_size, int garbage_val) {
+__global__ void scatter_and_clear(int* buffer, int* predicate, int image_size, int new_size, int garbage_val) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < image_size) {
-        if (buffer[idx] != garbage_val) {
+        if (idx < new_size && buffer[idx] != garbage_val) {
             buffer[predicate[idx]] = buffer[idx];
         }
+        // Clear out old values beyond the compacted size
+        if (idx >= new_size) {
+            buffer[idx] = 0;
+        }
     }
-    __syncthreads();
 }
 
 __global__ void histogram_kernel(int* buffer, int image_size, int* histogram) {
@@ -84,10 +87,15 @@ void fix_image_gpu(Image& to_fix) {
     thrust::exclusive_scan(d_predicate.begin(), d_predicate.end(), d_predicate.begin());
     print_log("Checkpoint 3");
 
+    int new_size = d_predicate.back();
+    if (d_buffer.back() != garbage_val) {
+        ++new_size;
+    }
+
     // Scatter to the corresponding addresses
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
-    scatter_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_predicate.data()), image_size, garbage_val);
+    scatter_and_clear<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_predicate.data()), image_size, new_size, garbage_val);
     print_log("Checkpoint 4");
     
     // #2 Apply map to fix pixels
