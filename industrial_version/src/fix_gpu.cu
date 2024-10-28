@@ -74,7 +74,8 @@ void fix_image_gpu(Image& to_fix) {
     // Allocate device memory using thurst
     thrust::device_vector<int> d_buffer(to_fix.buffer, to_fix.buffer + to_fix.size());
     thrust::device_vector<int> d_predicate(to_fix.size(), 0);
-    thrust::device_vector<int> d_histogram(256);
+    thrust::device_vector<int> d_histogram(256, 0);
+    thrust::device_vector<int> d_result(to_fix.size(), 0);
     print_log("Checkpoint 1");
 
     // #1 Compact - Build predicate vector
