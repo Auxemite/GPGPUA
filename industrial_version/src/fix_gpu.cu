@@ -87,18 +87,18 @@ void fix_image_gpu(Image& to_fix) {
     thrust::exclusive_scan(d_predicate.begin(), d_predicate.end(), d_predicate.begin());
     print_log("Checkpoint 3");
 
-    int new_size = d_predicate.back();
-    if (d_buffer.back() != garbage_val) {
-        ++new_size;
-    }
-
     // Scatter to the corresponding addresses
-    const int block_size = 256;
-    int grid_size = (image_size + block_size - 1) / block_size;
-    scatter_and_clear<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_predicate.data()), image_size, new_size, garbage_val);
+    thrust::scatter_if(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), d_predicate.begin(), d_result.begin(), [garbage_val] __device__(int val) {
+        return val != garbage_val;
+    });
+
+    // Copy compacted result back to d_buffer
+    d_buffer = d_result;
     print_log("Checkpoint 4");
     
     // #2 Apply map to fix pixels
+    const int block_size = 256;
+    int grid_size = (image_size + block_size - 1) / block_size;
     apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
     print_log("Checkpoint 5");
 
