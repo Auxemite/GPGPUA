@@ -64,7 +64,7 @@ void fix_image_gpu(Image& to_fix) {
     thrust::device_vector<int> d_histogram(256, 0);
     thrust::device_vector<int> d_result(to_fix.size(), 0);
     print_log("Checkpoint 1");
-    thrust::remove_if(d_buffer.begin(), d_buffer.end(), d_buffer.begin(), [garbage_val] __device__(int val) {
+    thrust::remove_if(d_buffer.begin(), d_buffer.end(), [garbage_val] __device__(int val) {
         return val == garbage_val;
     });
     // #1 Compact - Build predicate vector
