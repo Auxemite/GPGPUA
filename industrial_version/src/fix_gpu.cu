@@ -69,7 +69,7 @@ struct is_negate_27
 void fix_image_gpu(Image& to_fix) {
     const int image_size = to_fix.width * to_fix.height;
     
-    raft::resources handle;
+    // raft::resources handle;
     // Allocate device memory using thurst
     thrust::device_vector<int> d_buffer(to_fix.buffer, to_fix.buffer + to_fix.size());
     thrust::device_vector<int> d_histogram(256, 0);
