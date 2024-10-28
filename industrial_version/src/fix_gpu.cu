@@ -64,24 +64,27 @@ void fix_image_gpu(Image& to_fix) {
     thrust::device_vector<int> d_histogram(256, 0);
     thrust::device_vector<int> d_result(to_fix.size(), 0);
     print_log("Checkpoint 1");
-
+    thrust::remove_if(d_buffer.begin(), d_buffer.end(), d_buffer.begin(), [garbage_val] __device__(int val) {
+        return val == garbage_val;
+    });
     // #1 Compact - Build predicate vector
-    thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
-        return val != garbage_val ? 1 : 0;
-    });
-    print_log("Checkpoint 2");
 
-    // Compute the exclusive sum of the predicate (compact step)
-    thrust::exclusive_scan(d_predicate.begin(), d_predicate.end(), d_predicate.begin());
-    print_log("Checkpoint 3");
+    // thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
+    //     return val != garbage_val ? 1 : 0;
+    // });
+    // print_log("Checkpoint 2");
 
-    // Scatter to the corresponding addresses
-    thrust::scatter_if(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), d_predicate.begin(), d_result.begin(), [garbage_val] __device__(int val) {
-        return val != garbage_val;
-    });
+    // // Compute the exclusive sum of the predicate (compact step)
+    // thrust::exclusive_scan(d_predicate.begin(), d_predicate.end(), d_predicate.begin());
+    // print_log("Checkpoint 3");
 
-    // Copy compacted result back to d_buffer
-    d_buffer = d_result;
+    // // Scatter to the corresponding addresses
+    // thrust::scatter_if(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), d_predicate.begin(), d_result.begin(), [garbage_val] __device__(int val) {
+    //     return val != garbage_val;
+    // });
+
+    // // Copy compacted result back to d_buffer
+    // d_buffer = d_result;
     print_log("Checkpoint 4");
     
     // #2 Apply map to fix pixels
