@@ -54,9 +54,17 @@ __global__ void equalize_histogram(int* buffer, int image_size, int* histogram, 
     }
 }
 
+struct is_negate_27
+{
+  __host__ __device__
+  bool operator()(const int x)
+  {
+    return x == -27;
+  }
+};
+
 void fix_image_gpu(Image& to_fix) {
     const int image_size = to_fix.width * to_fix.height;
-    constexpr int garbage_val = -27;
 
     // Allocate device memory using thurst
     thrust::device_vector<int> d_buffer(to_fix.buffer, to_fix.buffer + to_fix.size());
@@ -64,9 +72,7 @@ void fix_image_gpu(Image& to_fix) {
     thrust::device_vector<int> d_histogram(256, 0);
     thrust::device_vector<int> d_result(to_fix.size(), 0);
     print_log("Checkpoint 1");
-    thrust::remove_if(d_buffer.begin(), d_buffer.end(), [garbage_val] __device__(int val) {
-        return val == garbage_val;
-    });
+    thrust::remove_if(d_buffer, d_buffer + to_fix.size(), is_negate_27());
     // #1 Compact - Build predicate vector
 
     // thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
