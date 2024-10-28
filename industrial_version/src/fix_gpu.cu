@@ -7,6 +7,8 @@
 #include <thrust/scan.h>
 #include <thrust/transform.h>
 #include <thrust/remove.h>
+#include <raft/stats/histogram.cuh>
+#include <raft/matrix/matrix_view.hpp>
 #include <rmm/device_uvector.hpp>
 #include <cub/cub.cuh>
 
@@ -66,48 +68,36 @@ struct is_negate_27
 
 void fix_image_gpu(Image& to_fix) {
     const int image_size = to_fix.width * to_fix.height;
-
+    
+    raft::resources handle;
     // Allocate device memory using thurst
     thrust::device_vector<int> d_buffer(to_fix.buffer, to_fix.buffer + to_fix.size());
-    thrust::device_vector<int> d_predicate(to_fix.size(), 0);
     thrust::device_vector<int> d_histogram(256, 0);
-    thrust::device_vector<int> d_result(to_fix.size(), 0);
     print_log("Checkpoint 1");
-    thrust::remove_if(d_buffer.begin(), d_buffer.end(), is_negate_27());
+
     // #1 Compact - Build predicate vector
-
-    // thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
-    //     return val != garbage_val ? 1 : 0;
-    // });
-    // print_log("Checkpoint 2");
-
-    // // Compute the exclusive sum of the predicate (compact step)
-    // thrust::exclusive_scan(d_predicate.begin(), d_predicate.end(), d_predicate.begin());
-    // print_log("Checkpoint 3");
-
-    // // Scatter to the corresponding addresses
-    // thrust::scatter_if(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), d_predicate.begin(), d_result.begin(), [garbage_val] __device__(int val) {
-    //     return val != garbage_val;
-    // });
-
-    // // Copy compacted result back to d_buffer
-    // d_buffer = d_result;
-    print_log("Checkpoint 4");
+    thrust::remove_if(d_buffer.begin(), d_buffer.end(), is_negate_27());
+    print_log("Checkpoint 2");
     
     // #2 Apply map to fix pixels
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
     apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
-    print_log("Checkpoint 5");
+    print_log("Checkpoint 3");
 
     // #3 Histogram equalization
     // Calculate histogram
-    histogram_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()));
-    print_log("Checkpoint 6");
+    raft::device_matrix_view<const int, int, raft::col_major> data_view(d_buffer.data().get(), image_size, 1);
+    raft::device_matrix_view<int, int, raft::col_major> bins_view(d_histogram.data().get(), 256, 1);
+
+    // Execute RAFT histogram
+    raft::stats::histogram<int, int>(handle, raft::stats::HistType::BASIC, data_view, bins_view);
+    //histogram_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()));
+    print_log("Checkpoint 4");
 
     // Compute the inclusive sum scan of the histogram
     thrust::inclusive_scan(d_histogram.begin(), d_histogram.end(), d_histogram.begin());
-    print_log("Checkpoint 7");
+    print_log("Checkpoint 5");
 
     // Find the first non-zero value in the cumulative histogram (on device)
     int cdf_min;
@@ -115,11 +105,11 @@ void fix_image_gpu(Image& to_fix) {
         return v != 0;
     });
     cudaMemcpy(&cdf_min, thrust::raw_pointer_cast(&(*first_non_zero)), sizeof(int), cudaMemcpyDeviceToHost);
-    print_log("Checkpoint 8");
+    print_log("Checkpoint 6");
 
     // Apply histogram equalization transformation
     equalize_histogram<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()), cdf_min);
-    print_log("Checkpoint 9");
+    print_log("Checkpoint 7");
 
     // Copy the buffer back to host
     cudaMemcpy(to_fix.buffer, thrust::raw_pointer_cast(d_buffer.data()), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost);
