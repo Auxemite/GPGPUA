@@ -7,8 +7,8 @@
 #include <thrust/scan.h>
 #include <thrust/transform.h>
 #include <thrust/remove.h>
-#include <raft/stats/histogram.cuh>
-#include <raft/matrix/matrix_view.hpp>
+// #include <raft/stats/histogram.cuh>
+// #include <raft/matrix/matrix_view.hpp>
 #include <rmm/device_uvector.hpp>
 #include <cub/cub.cuh>
 
@@ -87,12 +87,10 @@ void fix_image_gpu(Image& to_fix) {
 
     // #3 Histogram equalization
     // Calculate histogram
-    raft::device_matrix_view<const int, int, raft::col_major> data_view(d_buffer.data().get(), image_size, 1);
-    raft::device_matrix_view<int, int, raft::col_major> bins_view(d_histogram.data().get(), 256, 1);
-
-    // Execute RAFT histogram
-    raft::stats::histogram<int, int>(handle, raft::stats::HistType::BASIC, data_view, bins_view);
-    //histogram_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()));
+    // raft::device_matrix_view<const int, int, raft::col_major> data_view(d_buffer.data().get(), image_size, 1);
+    // raft::device_matrix_view<int, int, raft::col_major> bins_view(d_histogram.data().get(), 256, 1);
+    // raft::stats::histogram<int, int>(handle, raft::stats::HistType::BASIC, data_view, bins_view);
+    histogram_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()));
     print_log("Checkpoint 4");
 
     // Compute the inclusive sum scan of the histogram

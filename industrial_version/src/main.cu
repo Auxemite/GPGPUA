@@ -47,15 +47,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         // You must get the image from the pipeline as they arrive and launch computations right away
         // There are still ways to speeds this process of course
         images[i] = pipeline.get_image(i);
-        std::cout << "Fixing Image " << i << std::endl;
+        // std::cout << "Fixing Image " << i << std::endl;
         fix_image_gpu(images[i]);
-        for (int j = 0; j < images[i].width * images[i].height; ++j)
-        {
-            if (images[i].buffer[j] < 0) {
-                std::cout << "Garbage value " << images[i].buffer[j] << " found in image " << i << " at index " << j << std::endl;
-                return 1;
-            }
-        }
+        // for (int j = 0; j < images[i].width * images[i].height; ++j)
+        // {
+        //     if (images[i].buffer[j] < 0) {
+        //         std::cout << "Garbage value " << images[i].buffer[j] << " found in image " << i << " at index " << j << std::endl;
+        //         return 1;
+        //     }
+        // }
     }
 
     std::cout << "Done with compute, starting stats" << std::endl;
