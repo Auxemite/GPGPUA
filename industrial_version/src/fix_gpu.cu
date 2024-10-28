@@ -6,6 +6,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/scan.h>
 #include <thrust/transform.h>
+#include <thrust/remove.h>
 #include <rmm/device_uvector.hpp>
 #include <cub/cub.cuh>
 
@@ -72,7 +73,7 @@ void fix_image_gpu(Image& to_fix) {
     thrust::device_vector<int> d_histogram(256, 0);
     thrust::device_vector<int> d_result(to_fix.size(), 0);
     print_log("Checkpoint 1");
-    thrust::remove_if(d_buffer, d_buffer + to_fix.size(), is_negate_27());
+    thrust::remove_if(d_buffer.begin(), d_buffer.end(), is_negate_27());
     // #1 Compact - Build predicate vector
 
     // thrust::transform(d_buffer.begin(), d_buffer.end(), d_predicate.begin(), [garbage_val] __device__(int val) {
