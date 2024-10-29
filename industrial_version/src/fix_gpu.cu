@@ -113,7 +113,4 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     equalize_histogram<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data(), cdf_min);
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 7");
-
-    // Copy the buffer back to host
-    cudaMemcpyAsync(to_fix.buffer, thrust::raw_pointer_cast(d_buffer.data()), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost, d_buffer.stream());
 }
