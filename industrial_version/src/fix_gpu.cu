@@ -4,9 +4,9 @@
 #include <string>
 #include <iostream>
 #include <thrust/device_vector.h>
-#include <thrust/scan.h>
-#include <thrust/transform.h>
-#include <thrust/remove.h>
+#include <thrust/async/scan.h>
+#include <thrust/async/transform.h>
+#include <thrust/async/remove.h>
 // #include <raft/stats/histogram.cuh>
 // #include <raft/matrix/matrix_view.hpp>
 #include <rmm/device_uvector.hpp>
@@ -66,23 +66,26 @@ struct is_negate_27
   }
 };
 
-void fix_image_gpu(Image& to_fix) {
+void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     const int image_size = to_fix.width * to_fix.height;
     
     // raft::resources handle;
     // Allocate device memory using thurst
-    thrust::device_vector<int> d_buffer(to_fix.buffer, to_fix.buffer + to_fix.size());
-    thrust::device_vector<int> d_histogram(256, 0);
+    rmm::device_uvector<int> d_histogram(256);
+    cudaMemsetAsync(d_histogram.data(), 0, sizeof(int) * 256, d_buffer.stream());
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 1");
 
     // #1 Compact - Build predicate vector
-    thrust::remove_if(d_buffer.begin(), d_buffer.end(), is_negate_27());
+    thrust::async::remove_if(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), is_negate_27());
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 2");
     
     // #2 Apply map to fix pixels
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
-    apply_pixel_transformation<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size);
+    apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
 
     // #3 Histogram equalization
@@ -90,25 +93,29 @@ void fix_image_gpu(Image& to_fix) {
     // raft::device_matrix_view<const int, int, raft::col_major> data_view(d_buffer.data().get(), image_size, 1);
     // raft::device_matrix_view<int, int, raft::col_major> bins_view(d_histogram.data().get(), 256, 1);
     // raft::stats::histogram<int, int>(handle, raft::stats::HistType::BASIC, data_view, bins_view);
-    histogram_kernel<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()));
+    histogram_kernel<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data());
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 4");
 
     // Compute the inclusive sum scan of the histogram
-    thrust::inclusive_scan(d_histogram.begin(), d_histogram.end(), d_histogram.begin());
+    thrust::async::inclusive_scan(thrust::cuda::par.on(d_buffer.stream()), d_histogram.begin(), d_histogram.end(), d_histogram.begin());
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 5");
 
     // Find the first non-zero value in the cumulative histogram (on device)
     int cdf_min;
-    auto first_non_zero = thrust::find_if(d_histogram.begin(), d_histogram.end(), [] __device__(int v) {
+    auto first_non_zero = thrust::async::find_if(thrust::cuda::par.on(d_buffer.stream()), d_histogram.begin(), d_histogram.end(), [] __device__(int v) {
         return v != 0;
     });
-    cudaMemcpy(&cdf_min, thrust::raw_pointer_cast(&(*first_non_zero)), sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpyAsync(&cdf_min, thrust::raw_pointer_cast(&(*first_non_zero)), sizeof(int), cudaMemcpyDeviceToHost, d_buffer.stream());
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 6");
 
     // Apply histogram equalization transformation
-    equalize_histogram<<<grid_size, block_size>>>(thrust::raw_pointer_cast(d_buffer.data()), image_size, thrust::raw_pointer_cast(d_histogram.data()), cdf_min);
+    equalize_histogram<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data(), cdf_min);
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 7");
 
     // Copy the buffer back to host
-    cudaMemcpy(to_fix.buffer, thrust::raw_pointer_cast(d_buffer.data()), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost);
+    cudaMemcpyAsync(to_fix.buffer, thrust::raw_pointer_cast(d_buffer.data()), sizeof(int) * to_fix.size(), cudaMemcpyDeviceToHost, d_buffer.stream());
 }

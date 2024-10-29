@@ -59,6 +59,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         cudaStreamSynchronize(stream);
 
         // fix image gpu indus
+        fix_image_gpu(device_buffer, images[i].width * images[i].height);
         cudaMemcpyAsync(images[i].buffer,device_buffer.data(),images[i].size()*sizeof(int),cudaMemcpyDeviceToHost,stream); 
         cudaStreamSynchronize(stream);
         //reduce to count and sort 
