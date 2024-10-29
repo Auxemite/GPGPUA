@@ -6,7 +6,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/async/scan.h>
 #include <thrust/async/transform.h>
-#include <thrust/async/remove.h>
+#include <thrust/remove.h>
 // #include <raft/stats/histogram.cuh>
 // #include <raft/matrix/matrix_view.hpp>
 #include <rmm/device_uvector.hpp>
@@ -77,7 +77,7 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     print_log("Checkpoint 1");
 
     // #1 Compact - Build predicate vector
-    thrust::async::remove_if(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), is_negate_27());
+    thrust::remove_if(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), is_negate_27());
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 2");
     
