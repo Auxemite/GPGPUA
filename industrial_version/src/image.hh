@@ -42,7 +42,7 @@ struct Image
 
         if (magic == "P5")
         {
-            // TODO : Isn't there a better way to allocate the CPU Memory
+            // DID : Isn't there a better way to allocate the CPU Memory
             // To speed up the Host-to-Device Transfert ?
             buffer = (int *)malloc(width * height * sizeof(int));
             infile.seekg(1, infile.cur);
@@ -69,9 +69,10 @@ struct Image
                 while (std::getline(lineStream, s, ';'))
                     ++image_size;
             }
-            // TODO : Isn't there a better way to allocate the CPU Memory
+            // DONE : Isn't there a better way to allocate the CPU Memory
             // To speed up the Host-to-Device Transfert ?
-            buffer = (int *)malloc(image_size * sizeof(int));
+            //buffer = (int *)malloc(image_size * sizeof(int));
+            cudaMallocHost((void**)&buffer,image_size * sizeof(int));
 
             std::stringstream lineStream(line);
             std::string s;
