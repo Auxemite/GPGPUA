@@ -71,7 +71,7 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     
     // raft::resources handle;
     // Allocate device memory using thurst
-    rmm::device_uvector<int> d_histogram(256);
+    rmm::device_uvector<int> d_histogram(256, d_buffer.stream());
     cudaMemsetAsync(d_histogram.data(), 0, sizeof(int) * 256, d_buffer.stream());
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 1");
