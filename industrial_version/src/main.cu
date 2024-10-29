@@ -108,9 +108,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // If you did the sorting, check that the ids are in the same order
     for (int i = 0; i < nb_images; ++i)
     {
-        std::cout << "Image #" << to_sort.id << " total : " << to_sort.total << std::endl;
+        std::cout << "Image #" << to_sort[i].id << " total : " << to_sort[i].total << std::endl;
         std::ostringstream oss;
-        oss << "Image#" << to_sort.id << ".pgm";
+        oss << "Image#" << to_sort[i].id << ".pgm";
         std::string str = oss.str();
         images[i].write(str);
     }
