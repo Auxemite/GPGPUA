@@ -67,8 +67,6 @@ struct is_negate_27
 };
 
 void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
-    const int image_size = to_fix.width * to_fix.height;
-    
     // raft::resources handle;
     // Allocate device memory using thurst
     rmm::device_uvector<int> d_histogram(256, d_buffer.stream());
@@ -104,7 +102,7 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
 
     // Find the first non-zero value in the cumulative histogram (on device)
     int cdf_min;
-    auto first_non_zero = thrust::async::find_if(thrust::cuda::par.on(d_buffer.stream()), d_histogram.begin(), d_histogram.end(), [] __device__(int v) {
+    auto first_non_zero = thrust::find_if(thrust::cuda::par.on(d_buffer.stream()), d_histogram.begin(), d_histogram.end(), [] __device__(int v) {
         return v != 0;
     });
     cudaMemcpyAsync(&cdf_min, thrust::raw_pointer_cast(&(*first_non_zero)), sizeof(int), cudaMemcpyDeviceToHost, d_buffer.stream());
