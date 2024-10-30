@@ -108,6 +108,7 @@ struct Image
             {
                 std::cout << std::endl;
                 std::cout << "Error at : " << i << " Value is : " << val << ". Values should be between 0 and 255." << std::endl;
+                cudaFreeHost(buffer);
                 throw std::runtime_error("Invalid image format");
             }
             outfile << static_cast<uint8_t>(val);

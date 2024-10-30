@@ -1,38 +1,64 @@
 #include "fix_gpu.cuh"
-#include "image.hh"
 #include "kernel.cuh"
 
 #include <array>
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-void fix_image_gpu(const int image_size,rmm::device_uvector<int>& to_fix)
+#include <thrust/async/scan.h>
+
+#define CUDA_CHECK(call) \
+    { \
+        cudaError_t err = call; \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "CUDA error in file '%s' in line %i: %s.\n", \
+                    __FILE__, __LINE__, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+    }
+
+void fix_image_gpu(Image& to_fix,cudaStream_t& stream)
 {
 
+    const int image_size = to_fix.width * to_fix.height;
+
+    rmm::device_uvector<int> d_buffer(to_fix.size(),stream);
+    
+    cudaMemcpyAsync(d_buffer.data(),to_fix.buffer,to_fix.size()*sizeof(int),cudaMemcpyHostToDevice,stream); 
+    
+    cudaStreamSynchronize(stream);
     // #1 Compact
 
     // Build predicate vector
-
-    rmm::device_uvector<int> predicate(to_fix.size()+1, to_fix.stream()); 
-    creation_mask(to_fix,predicate);
-    cudaStreamSynchronize(to_fix.stream());
+    rmm::device_uvector<int> predicate(d_buffer.size()+1,stream); 
+    
+    creation_mask(d_buffer,predicate);
+    
+    cudaStreamSynchronize(stream);
     // Compute the exclusive sum of the predicate
 
+    //thrust::async::inclusive_scan(thrust::cuda::par.on(stream),predicate.begin(), predicate.end(), predicate.begin());
     DecoupledLookBack_Scan(predicate);
-    cudaStreamSynchronize(to_fix.stream());
+    
+    CUDA_CHECK(cudaStreamSynchronize(stream));
 
     // Scatter to the corresponding addresses
+    rmm::device_uvector<int> res(image_size,stream);
+   
 
-    scatter(to_fix,predicate);
+    scatter(d_buffer,predicate,res); 
+    
+    CUDA_CHECK(cudaStreamSynchronize(stream));
 
     // #2 Apply map to fix pixels
 
-    cudaStreamSynchronize(to_fix.stream());
+    map_classique(res,image_size);
 
-    map_classique(to_fix,image_size);
+    cudaStreamSynchronize(stream);
+
+    cudaMemcpyAsync(to_fix.buffer,res.data(),image_size*sizeof(int),cudaMemcpyDeviceToHost,stream);
     
-    cudaStreamSynchronize(to_fix.stream());
-
+    cudaStreamSynchronize(stream);
     /*
     // #3 Histogram equalization
 

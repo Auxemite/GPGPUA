@@ -1,5 +1,6 @@
 #pragma once
 
 #include <rmm/device_uvector.hpp>
+#include "image.hh"
 
-void fix_image_gpu(const int image_size,rmm::device_uvector<int>& to_fix);
+void fix_image_gpu(Image& to_fix,cudaStream_t& stream);

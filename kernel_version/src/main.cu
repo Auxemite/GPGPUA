@@ -37,8 +37,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // - One CPU thread is launched for each image
 
     std::cout << "Done, starting compute" << std::endl;
-    
 
+
+    
     #pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
@@ -52,18 +53,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
         // There are still ways to speeds this process of course 
         cudaStream_t stream = handle.get_stream();
         images[i] = pipeline.get_image(i);
-        rmm::device_uvector<int> device_buffer(images[i].size(),stream);
-        cudaMemcpyAsync(device_buffer.data(),images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream); 
-        cudaStreamSynchronize(stream);
-        fix_image_gpu(images[i].width*images[i].height,device_buffer);
+        fix_image_gpu(images[i],stream);
 
-        cudaMemcpyAsync(images[i].buffer,device_buffer.data(),images[i].size()*sizeof(int),cudaMemcpyDeviceToHost,stream);
-
+        /*auto pol  = thrust::async::reduce(thrust::cuda::par.on(stream),device_buffer.begin(),device_buffer.end(),0); 
         cudaStreamSynchronize(stream);
-        auto pol  = thrust::async::reduce(thrust::cuda::par.on(stream),device_buffer.begin(),device_buffer.end(),0); 
-        cudaStreamSynchronize(stream);
-        images[i].to_sort.total = pol.get();
+        images[i].to_sort.total = pol.get();*/
     }
+
+
 
     std::cout << "Done with compute, starting stats" << std::endl;
 
@@ -74,13 +71,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // TODO : make it GPU compatible (aka faster)
     // You can use multiple CPU threads for your GPU version using openmp or not
     // Up to you :)
-    /*#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
         auto& image = images[i];
         const int image_size = image.width * image.height;
         image.to_sort.total = std::reduce(image.buffer, image.buffer + image_size, 0);
-    }*/
+    }
 
     // - All totals are known, sort images accordingly (OPTIONAL)
     // Moving the actual images is too expensive, sort image indices instead
