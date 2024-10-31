@@ -8,17 +8,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
     if (argc != 2)
     {
-        std::cerr << "Usage: " << argv[0] << " <cpu | kernel | indus>" << std::endl;
+        std::cerr << "Not enough argument :\nUsage: " << argv[0] << " <cpu | kernel | indus>" << std::endl;
         return 1;
     }
 
-    if (argv[1] == "cpu")
+    if (strcmp(argv[1], "cpu") == 0)
         return main_cpu();
-    if (argv[1] == "kernel")
+    if (strcmp(argv[1], "kernel") == 0)
         return main_kernel();
-    if (argv[1] == "indus")
+    if (strcmp(argv[1], "indus") == 0)
         return main_indus();
     
-    std::cerr << "Usage: " << argv[0] << " <cpu | kernel | indus>" << std::endl;
+    std::cerr << "Invalid argument :" << argv[1] << "\nUsage: " << argv[0] << " <cpu | kernel | indus>" << std::endl;
     return 1;
 }
