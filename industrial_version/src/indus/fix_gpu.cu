@@ -1,4 +1,4 @@
-#include "image.hh"
+#include "../image.hh"
 
 #include <string>
 #include <iostream>
