@@ -103,7 +103,7 @@ int main_cpu()
     // Cleaning
     // TODO : Don't forget to update this if you change allocation style
     for (int i = 0; i < nb_images; ++i)
-        free(images[i].buffer);
+        cudaFreeHost(images[i].buffer);
 
     return 0;
 }
