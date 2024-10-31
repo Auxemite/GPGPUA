@@ -1,4 +1,3 @@
-#include "fix_cpu.cuh"
 #include "image.hh"
 
 #include <string>
@@ -7,8 +6,6 @@
 #include <thrust/async/scan.h>
 #include <thrust/async/transform.h>
 #include <thrust/remove.h>
-// #include <raft/stats/histogram.cuh>
-// #include <raft/matrix/matrix_view.hpp>
 #include <rmm/device_uvector.hpp>
 #include <cub/cub.cuh>
 

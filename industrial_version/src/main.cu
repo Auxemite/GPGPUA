@@ -1,6 +1,8 @@
-#include "kernel/main_kernel.cuh"
-#include "indus/main_indus.cuh"
-#include "cpu/main_cpu.cuh"
+#include "main_kernel.cuh"
+#include "main_indus.cuh"
+#include "main_cpu.cuh"
+
+#include <iostream>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
