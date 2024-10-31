@@ -39,6 +39,7 @@ add_executable(main
             src/kernel/histo.cu
             src/kernel/calculate_mask.cu
             src/kernel/scattering.cu
+            src/kernel/reduce.cu
                         
             src/cpu/fix_cpu.cu
 
