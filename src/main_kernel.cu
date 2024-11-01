@@ -1,7 +1,7 @@
 #include "image.hh"
 #include "pipeline.hh"
 #include "kernel/fix_gpu.cuh"
-#include "main_kernel.cuh"
+#include "main.cuh"
 
 #include <vector>
 #include <iostream>
@@ -10,7 +10,6 @@
 #include <filesystem>
 #include <numeric>
 #include <raft/core/handle.hpp>
-#include <thrust/async/reduce.h>
 
 int main_kernel()
 {

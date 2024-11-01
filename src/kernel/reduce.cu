@@ -1,5 +1,5 @@
+#include "kernel.cuh"
 #include <raft/core/device_span.hpp>
-#include <rmm/device_uvector.hpp>
 #include <rmm/device_scalar.hpp>
 
 template <typename T>
@@ -37,5 +37,15 @@ void my_reduce(raft::device_span<const T> buffer, raft::device_span<T> total)
     warp_reduce(shared_data, tid);
 
     if (tid == 0)
-        atomicAdd(total.data(), shared_data[0]);
+       total[0]=shared_data[0];
 }
+
+int reduce(rmm::device_uvector<int>& buffer)
+{ 
+    int nb_block = (buffer.size()+512-1)/512;
+    rmm::device_scalar<int> global_c(0,buffer.stream());
+
+    my_reduce<int><<<nb_block,512,512*sizeof(int),buffer.stream()>>>(raft::device_span<const int>(buffer.data(),buffer.size()),raft::device_span<int>(global_c.data(),global_c.size()));
+
+    return global_c.value(buffer.stream());
+} 

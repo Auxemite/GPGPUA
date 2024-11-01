@@ -1,7 +1,7 @@
 #include "image.hh"
 #include "pipeline.hh"
 #include "cpu/fix_cpu.cuh"
-#include "main_cpu.cuh"
+#include "main.cuh"
 
 #include <vector>
 #include <iostream>

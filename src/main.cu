@@ -1,6 +1,4 @@
-#include "main_kernel.cuh"
-#include "main_indus.cuh"
-#include "main_cpu.cuh"
+#include "main.cuh"
 
 #include <iostream>
 

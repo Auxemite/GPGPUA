@@ -18,3 +18,5 @@ void Scan_histo(rmm::device_uvector<int>& buffer);
 int find_first_value(rmm::device_uvector<int>& buffer);
 
 void last_mapping(rmm::device_uvector<int>& buffer,rmm::device_uvector<int>& histo,const int cdf);
+
+int reduce(rmm::device_uvector<int>& buffer);
