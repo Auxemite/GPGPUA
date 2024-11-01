@@ -37,7 +37,7 @@ void my_reduce(raft::device_span<const T> buffer, raft::device_span<T> total)
     warp_reduce(shared_data, tid);
 
     if (tid == 0)
-       total[0]=shared_data[0];
+       atomicAdd(&total[0],shared_data[0]);
 }
 
 int reduce(rmm::device_uvector<int>& buffer)

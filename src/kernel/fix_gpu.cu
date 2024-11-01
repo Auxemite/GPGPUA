@@ -5,7 +5,6 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-#include <thrust/async/scan.h>
 
 #define CUDA_CHECK(call) \
     { \
@@ -17,7 +16,7 @@
         } \
     }
 
-void fix_image_gpu(Image& to_fix,cudaStream_t& stream)
+int fix_image_gpu(Image& to_fix,cudaStream_t& stream)
 {
 
     const int image_size = to_fix.width * to_fix.height;
@@ -53,9 +52,7 @@ void fix_image_gpu(Image& to_fix,cudaStream_t& stream)
     // #2 Apply map to fix pixels
 
     map_classique(res,image_size);
-
-    cudaStreamSynchronize(stream);
-    
+ 
 
     // #3 Histogram equalization
 
@@ -83,17 +80,15 @@ void fix_image_gpu(Image& to_fix,cudaStream_t& stream)
     // Apply the map transformation of the histogram equalization
     cudaStreamSynchronize(stream);
 
-    last_mapping(res,histo,found);
-    /*std::transform(to_fix.buffer, to_fix.buffer + image_size, to_fix.buffer,
-        [image_size, cdf_min, &histo](int pixel)
-            {
-                return std::roundf(((histo[pixel] - cdf_min) / static_cast<float>(image_size - cdf_min)) * 255.0f);
-            }
-    );*/
+    last_mapping(res,histo,found); 
 
     cudaStreamSynchronize(stream);
 
-    cudaMemcpyAsync(to_fix.buffer,res.data(),image_size*sizeof(int),cudaMemcpyDeviceToHost,stream);
+    int ret = reduce(res);   
     
+    cudaMemcpyAsync(to_fix.buffer,res.data(),image_size*sizeof(int),cudaMemcpyDeviceToHost,stream);
+
     cudaStreamSynchronize(stream);
+
+    return ret;
 }

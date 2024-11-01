@@ -53,11 +53,8 @@ int main_kernel()
         // There are still ways to speeds this process of course 
         cudaStream_t stream = handle.get_stream();
         images[i] = pipeline.get_image(i);
-        fix_image_gpu(images[i],stream);
-
-        /*auto pol  = thrust::async::reduce(thrust::cuda::par.on(stream),device_buffer.begin(),device_buffer.end(),0); 
-        cudaStreamSynchronize(stream);
-        images[i].to_sort.total = pol.get();*/
+        int reduce = fix_image_gpu(images[i],stream);
+        images[i].to_sort.total = reduce;
     }
 
 
@@ -71,13 +68,13 @@ int main_kernel()
     // TODO : make it GPU compatible (aka faster)
     // You can use multiple CPU threads for your GPU version using openmp or not
     // Up to you :)
-    #pragma omp parallel for
+    /*#pragma omp parallel for
     for (int i = 0; i < nb_images; ++i)
     {
         auto& image = images[i];
         const int image_size = image.width * image.height;
         image.to_sort.total = std::reduce(image.buffer, image.buffer + image_size, 0);
-    }
+    }*/
 
     // - All totals are known, sort images accordingly (OPTIONAL)
     // Moving the actual images is too expensive, sort image indices instead
