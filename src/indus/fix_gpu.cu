@@ -100,7 +100,7 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     // cudaStreamSynchronize(d_buffer.stream());
     thrust::transform(d_temp.begin(), d_temp.end(), d_temp.begin(), mod_index_functor());
     // cudaStreamSynchronize(d_buffer.stream());
-    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end(), d_buffer.begin(), d_temp.begin(), thrust::plus<int>());
+    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end(), d_buffer.begin(), d_buffer.begin(), thrust::plus<int>());
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
 
@@ -111,15 +111,9 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     int max_val = 255;
     void* d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
-
-    // Determine temporary device storage requirements
     cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_histogram.data()), num_bins, min_val, max_val + 1, image_size);
     cudaMalloc(&d_temp_storage, temp_storage_bytes);
-
-    // Compute histogram with CUB
     cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_histogram.data()), num_bins, min_val, max_val + 1, image_size);
-
-    // Clean up temporary storage
     cudaFree(d_temp_storage);
 
     // histogram_kernel<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data());
