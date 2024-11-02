@@ -85,8 +85,8 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     print_log("Checkpoint 2");
     
     // #2 Apply map to fix pixels
-    // const int block_size = 256;
-    // int grid_size = (image_size + block_size - 1) / block_size;
+    const int block_size = 256;
+    int grid_size = (image_size + block_size - 1) / block_size;
     // apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
     thrust::transform(thrust::cuda::par.on(d_buffer.stream()),
     d_buffer.begin(), d_buffer.end(),
