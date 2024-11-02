@@ -1,7 +1,6 @@
 #include "image.hh"
 #include "pipeline.hh"
 #include "cpu/fix_cpu.cuh"
-#include "main.cuh"
 
 #include <vector>
 #include <iostream>
@@ -103,7 +102,7 @@ int main_cpu()
     // Cleaning
     // TODO : Don't forget to update this if you change allocation style
     for (int i = 0; i < nb_images; ++i)
-        cudaFreeHost(images[i].buffer);
+        free(images[i].buffer);
 
     return 0;
 }
