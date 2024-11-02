@@ -102,11 +102,11 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
 
     // #3 Histogram equalization
     // Calculate histogram
-    int num_bins = 256;
-    int min_val = 0;
-    int max_val = 255;
-    void* d_temp_storage = nullptr;
-    size_t temp_storage_bytes = 0;
+    // int num_bins = 256;
+    // int min_val = 0;
+    // int max_val = 255;
+    // void* d_temp_storage = nullptr;
+    // size_t temp_storage_bytes = 0;
 
     // Determine temporary device storage requirements
     // cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_histogram.data()), num_bins, min_val, max_val + 1, image_size);
