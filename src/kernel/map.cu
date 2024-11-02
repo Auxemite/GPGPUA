@@ -43,7 +43,7 @@ void kernel_last_mapping(raft::device_span<T> buffer,raft::device_span<T> histo,
 
     if(i>=buffer.size())
         return;
-    buffer[i]=std::roundf(((histo[buffer[i]]-cdf)/((float)(buffer.size()-cdf)))*255.0f);
+    buffer[i]=std::roundf(((histo[buffer[i]]-cdf)/static_cast<float>(buffer.size()-cdf))*255.0f);
 }
 
 template <typename T>
@@ -52,7 +52,7 @@ void kernel_map_lookUp(raft::device_span<T> buffer,raft::device_span<T> look)
 {
     unsigned int tid = threadIdx.x;
     unsigned int i = blockIdx.x*blockDim.x+tid;
-    unsigned int mod = i%buffer.size();
+    unsigned int mod = i%look.size();
 
     if(i>=buffer.size())
         return ;
@@ -78,12 +78,11 @@ void map_look_up(rmm::device_uvector<int>& buffer,const int image_size)
 {
     int nb_block = (image_size+512-1)/512;
     rmm::device_uvector<int> test(4,buffer.stream());
-    raft::device_span<int> oui(test.data(),test.size());
-    oui[0]=1;
-    oui[1]=-5;
-    oui[2]=3;
-    oui[3]=-8;
-    kernel_map_lookUp<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),image_size),oui);
+    test.set_element(0,1,buffer.stream());
+    test.set_element(1,-5,buffer.stream());
+    test.set_element(2,3,buffer.stream());
+    test.set_element(3,-8,buffer.stream());
+    kernel_map_lookUp<int><<<nb_block,512,0,buffer.stream()>>>(raft::device_span<int>(buffer.data(),image_size),raft::device_span<int>(test.data(),test.size()));
 }
 
 

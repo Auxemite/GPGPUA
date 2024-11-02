@@ -62,10 +62,10 @@ int main_indus()
 
         // fix image gpu indus
         fix_image_gpu(device_buffer, images[i].width * images[i].height);
-        cudaMemcpyAsync(images[i].buffer,device_buffer.data(),images[i].size()*sizeof(int),cudaMemcpyDeviceToHost,stream); 
+        cudaMemcpyAsync(images[i].buffer,device_buffer.data(),images[i].width * images[i].height*sizeof(int),cudaMemcpyDeviceToHost,stream); 
         cudaStreamSynchronize(stream);
         //reduce to count and sort 
-        auto pol  = thrust::async::reduce(thrust::cuda::par.on(stream),device_buffer.begin(),device_buffer.end(),0); 
+        auto pol  = thrust::async::reduce(thrust::cuda::par.on(stream),device_buffer.begin(),device_buffer.begin() +(images[i].width * images[i].height),0); 
         cudaStreamSynchronize(stream);
         images[i].to_sort.total = pol.get();
     }

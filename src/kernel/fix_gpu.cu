@@ -5,7 +5,8 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-
+#include "thrust/async/reduce.h
+"
 #define CUDA_CHECK(call) \
     { \
         cudaError_t err = call; \
@@ -51,7 +52,7 @@ int fix_image_gpu(Image& to_fix,cudaStream_t& stream)
 
     // #2 Apply map to fix pixels
 
-    map_classique(res,image_size);
+    map_look_up(res,image_size);
  
 
     // #3 Histogram equalization

@@ -46,6 +46,5 @@ int reduce(rmm::device_uvector<int>& buffer)
     rmm::device_scalar<int> global_c(0,buffer.stream());
 
     my_reduce<int><<<nb_block,512,512*sizeof(int),buffer.stream()>>>(raft::device_span<const int>(buffer.data(),buffer.size()),raft::device_span<int>(global_c.data(),global_c.size()));
-
     return global_c.value(buffer.stream());
 } 
