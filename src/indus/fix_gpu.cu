@@ -39,13 +39,12 @@ struct HistogramEqualizationFunctor {
     }
 };
 
-// __global__ void apply_pixel_transformation(int* buffer, int image_size) {
-//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//     int[] values = {1, -5, 3, -8};
-//     if (idx < image_size) {
-//         buffer[idx] += values[idx % 4];
-//     }
-// }
+__global__ void apply_pixel_transformation(int* buffer, int image_size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < image_size) {
+        buffer[idx] += values[idx % 4];
+    }
+}
 
 __global__ void histogram_kernel(int* buffer, int image_size, int* histogram) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -87,14 +86,17 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     // #2 Apply map to fix pixels
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
-    // apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
-    thrust::transform(thrust::cuda::par.on(d_buffer.stream()),
-    d_buffer.begin(), d_buffer.end(),
-    thrust::make_transform_iterator(thrust::make_counting_iterator(0), [values] __device__(int idx) {
-        return values[idx % 4];
-    }),
-    d_buffer.begin(),
-    thrust::plus<int>());
+    apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
+    // int indices[image_size];
+    // thrust::sequence(indices, indices + image_size);
+
+    // thrust::transform(thrust::cuda::par.on(d_buffer.stream()),
+    // d_buffer.begin(), d_buffer.end(),
+    // thrust::make_transform_iterator(thrust::make_counting_iterator(0), [values] __device__(int idx) {
+    //     return values[idx % 4];
+    // }),
+    // d_buffer.begin(),
+    // thrust::plus<int>());
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
 
