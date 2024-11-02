@@ -100,8 +100,8 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     // cudaStreamSynchronize(d_buffer.stream());
     thrust::transform(d_temp.begin(), d_temp.end(), d_temp.begin(), mod_index_functor());
     // cudaStreamSynchronize(d_buffer.stream());
-    thrust::transform(d_buffer.begin(), d_buffer.end(), d_temp.begin(), d_buffer.begin(), thrust::plus<int>());
-    // cudaStreamSynchronize(d_buffer.stream());
+    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), d_temp.begin(), d_buffer.begin(), thrust::plus<int>());
+    cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
 
     // #3 Histogram equalization
