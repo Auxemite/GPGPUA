@@ -10,8 +10,6 @@
 #include <cub/cub.cuh>
 #include <cub/device/device_histogram.cuh>
 
-const int values[] = {1, -5, 3, -8};
-
 #define CUDA_CHECK(call) \
     { \
         cudaError_t err = call; \
@@ -41,6 +39,7 @@ struct HistogramEqualizationFunctor {
 
 __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const int values[] = {1, -5, 3, -8};
     if (idx < image_size) {
         buffer[idx] += values[idx % 4];
     }
