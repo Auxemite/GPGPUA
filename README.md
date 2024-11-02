@@ -127,5 +127,17 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 
 ```bash
 cd build
-./main
+```
+Run the 3 versions of the algorithm
+CPU version : 
+```
+./main cpu
+```
+GPU Kernel version :
+```
+./main kernel
+```
+GPU Industrial version :
+```
+./main indus
 ```
