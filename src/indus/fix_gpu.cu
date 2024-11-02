@@ -8,6 +8,7 @@
 #include <thrust/remove.h>
 #include <rmm/device_uvector.hpp>
 #include <cub/cub.cuh>
+#include <cub/device/device_histogram.cuh>
 
 #define CUDA_CHECK(call) \
     { \
@@ -25,17 +26,22 @@ void print_log(const std::string& message) {
         std::cout << message << std::endl;
 }
 
+struct HistogramEqualizationFunctor {
+    int cdf_min;
+    int image_size;
+
+    HistogramEqualizationFunctor(int _cdf_min, int _image_size) : cdf_min(_cdf_min), image_size(_image_size) {}
+
+    __device__ int operator()(int pixel, int cdf) const {
+        return roundf(((cdf - cdf_min) / static_cast<float>(image_size - cdf_min)) * 255.0f);
+    }
+};
+
 __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int[] values = {1, -5, 3, -8};
     if (idx < image_size) {
-        if (idx % 4 == 0)
-            buffer[idx] += 1;
-        else if (idx % 4 == 1)
-            buffer[idx] -= 5;
-        else if (idx % 4 == 2)
-            buffer[idx] += 3;
-        else if (idx % 4 == 3)
-            buffer[idx] -= 8;
+        buffer[idx] += values[idx % 4];
     }
 }
 
@@ -63,6 +69,8 @@ struct is_negate_27
   }
 };
 
+const int values[4] = {1, -5, 3, -8};
+
 void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     // raft::resources handle;
     // Allocate device memory using thurst
@@ -77,20 +85,40 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     print_log("Checkpoint 2");
     
     // #2 Apply map to fix pixels
-    const int block_size = 256;
-    int grid_size = (image_size + block_size - 1) / block_size;
-    apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
+    // const int block_size = 256;
+    // int grid_size = (image_size + block_size - 1) / block_size;
+    // apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
+    thrust::transform(thrust::cuda::par.on(d_buffer.stream()),
+    d_buffer.begin(), d_buffer.end(),
+    thrust::make_transform_iterator(thrust::make_counting_iterator(0), [values] __device__(int idx) {
+        return values[idx % 4];
+    }),
+    d_buffer.begin(),
+    thrust::plus<int>());
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
 
     // #3 Histogram equalization
     // Calculate histogram
-    // raft::device_matrix_view<const int, int, raft::col_major> data_view(d_buffer.data().get(), image_size, 1);
-    // raft::device_matrix_view<int, int, raft::col_major> bins_view(d_histogram.data().get(), 256, 1);
-    // raft::stats::histogram<int, int>(handle, raft::stats::HistType::BASIC, data_view, bins_view);
-    histogram_kernel<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data());
-    cudaStreamSynchronize(d_buffer.stream());
-    print_log("Checkpoint 4");
+    int num_bins = 256;
+    int min_val = 0;
+    int max_val = 255;
+    void* d_temp_storage = nullptr;
+    size_t temp_storage_bytes = 0;
+
+    // Determine temporary device storage requirements
+    cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_histogram.data()), num_bins, min_val, max_val + 1, image_size);
+    cudaMalloc(&d_temp_storage, temp_storage_bytes);
+
+    // Compute histogram with CUB
+    cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, thrust::raw_pointer_cast(d_buffer.data()), thrust::raw_pointer_cast(d_histogram.data()), num_bins, min_val, max_val + 1, image_size);
+
+    // Clean up temporary storage
+    cudaFree(d_temp_storage);
+
+    // histogram_kernel<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data());
+    // cudaStreamSynchronize(d_buffer.stream());
+    // print_log("Checkpoint 4");
 
     // Compute the inclusive sum scan of the histogram
     thrust::async::inclusive_scan(thrust::cuda::par.on(d_buffer.stream()), d_histogram.begin(), d_histogram.end(), d_histogram.begin());
@@ -107,7 +135,8 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     print_log("Checkpoint 6");
 
     // Apply histogram equalization transformation
-    equalize_histogram<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data(), cdf_min);
+    // equalize_histogram<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size, d_histogram.data(), cdf_min);
+    thrust::transform(d_buffer.begin(), d_buffer.end(), d_histogram.begin(), d_buffer.begin(), HistogramEqualizationFunctor(cdf_min, image_size));
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 7");
 }
