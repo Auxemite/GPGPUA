@@ -10,6 +10,8 @@
 #include <cub/cub.cuh>
 #include <cub/device/device_histogram.cuh>
 
+const int values[] = {1, -5, 3, -8};
+
 #define CUDA_CHECK(call) \
     { \
         cudaError_t err = call; \
@@ -37,13 +39,13 @@ struct HistogramEqualizationFunctor {
     }
 };
 
-__global__ void apply_pixel_transformation(int* buffer, int image_size) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int[] values = {1, -5, 3, -8};
-    if (idx < image_size) {
-        buffer[idx] += values[idx % 4];
-    }
-}
+// __global__ void apply_pixel_transformation(int* buffer, int image_size) {
+//     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//     int[] values = {1, -5, 3, -8};
+//     if (idx < image_size) {
+//         buffer[idx] += values[idx % 4];
+//     }
+// }
 
 __global__ void histogram_kernel(int* buffer, int image_size, int* histogram) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -68,8 +70,6 @@ struct is_negate_27
     return x == -27;
   }
 };
-
-const int values[4] = {1, -5, 3, -8};
 
 void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     // raft::resources handle;
