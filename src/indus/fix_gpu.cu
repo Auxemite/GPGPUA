@@ -38,17 +38,6 @@ struct HistogramEqualizationFunctor {
     }
 };
 
-struct mod_index_functor {
-    const int* values;
-
-    mod_index_functor(const int* _values) : values(_values) {}
-
-    __host__ __device__
-    int operator()(const int& i) const {
-        return values[i % 4];
-    }
-};
-
 __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int values[] = {1, -5, 3, -8};
@@ -72,8 +61,15 @@ __global__ void equalize_histogram(int* buffer, int image_size, int* histogram, 
     }
 }
 
-struct is_negate_27
-{
+struct mod_index_functor {
+    __host__ __device__
+    int operator()(const int i) {
+        const int values[] = {1, -5, 3, -8};
+        return values[i % 4];
+    }
+};
+
+struct is_negate_27 {
   __host__ __device__
   bool operator()(const int x)
   {
@@ -100,10 +96,10 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     // apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
 
     thrust::device_vector<int> d_temp(image_size);
-    thrust::sequence(d_temp.begin(), d_temp.end());
-    const int values[] = {1, -5, 3, -8};
-    mod_index_functor mod_index(values);
-    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end(), d_temp.begin(), mod_index);
+    thrust::sequence(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end());
+    cudaStreamSynchronize(d_buffer.stream());
+    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end(), d_temp.begin(), mod_index_functor());
+    cudaStreamSynchronize(d_buffer.stream());
     thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), d_temp.begin(), d_buffer.begin(), thrust::plus<int>());
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
