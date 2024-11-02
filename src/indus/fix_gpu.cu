@@ -46,13 +46,6 @@ __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     }
 }
 
-__global__ void histogram_kernel(int* buffer, int image_size, int* histogram) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < image_size) {
-        atomicAdd(&histogram[buffer[idx]], 1);
-    }
-}
-
 __global__ void equalize_histogram(int* buffer, int image_size, int* histogram, int cdf_min) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < image_size) {
@@ -94,14 +87,13 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
     apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
-
-    rmm::device_uvector<int> d_temp(image_size, d_buffer.stream());
-    thrust::sequence(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end());
-    cudaStreamSynchronize(d_buffer.stream());
-    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end(), d_temp.begin(), mod_index_functor());
-    cudaStreamSynchronize(d_buffer.stream());
-    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), d_temp.begin(), d_buffer.begin(), thrust::plus<int>());
-    cudaStreamSynchronize(d_buffer.stream());
+    // rmm::device_uvector<int> d_temp(image_size, d_buffer.stream());
+    // thrust::sequence(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end());
+    // cudaStreamSynchronize(d_buffer.stream());
+    // thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end(), d_temp.begin(), mod_index_functor());
+    // cudaStreamSynchronize(d_buffer.stream());
+    // thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), d_temp.begin(), d_buffer.begin(), thrust::plus<int>());
+    // cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
 
     // #3 Histogram equalization
