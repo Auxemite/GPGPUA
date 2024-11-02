@@ -6,6 +6,7 @@
 #include <thrust/async/scan.h>
 #include <thrust/async/transform.h>
 #include <thrust/remove.h>
+#include <thrust/sequence.h>
 #include <rmm/device_uvector.hpp>
 #include <cub/cub.cuh>
 #include <cub/device/device_histogram.cuh>
