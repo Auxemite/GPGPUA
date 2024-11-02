@@ -37,6 +37,17 @@ struct HistogramEqualizationFunctor {
     }
 };
 
+struct mod_index_functor {
+    const int* values;
+
+    mod_index_functor(const int* _values) : values(_values) {}
+
+    __host__ __device__
+    int operator()(const int& i) const {
+        return values[i % 4];
+    }
+};
+
 __global__ void apply_pixel_transformation(int* buffer, int image_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int values[] = {1, -5, 3, -8};
@@ -85,17 +96,14 @@ void fix_image_gpu(rmm::device_uvector<int>& d_buffer, const int image_size) {
     // #2 Apply map to fix pixels
     const int block_size = 256;
     int grid_size = (image_size + block_size - 1) / block_size;
-    apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
-    // int indices[image_size];
-    // thrust::sequence(indices, indices + image_size);
+    // apply_pixel_transformation<<<grid_size, block_size, 0, d_buffer.stream()>>>(d_buffer.data(), image_size);
 
-    // thrust::transform(thrust::cuda::par.on(d_buffer.stream()),
-    // d_buffer.begin(), d_buffer.end(),
-    // thrust::make_transform_iterator(thrust::make_counting_iterator(0), [values] __device__(int idx) {
-    //     return values[idx % 4];
-    // }),
-    // d_buffer.begin(),
-    // thrust::plus<int>());
+    thrust::device_vector<int> d_temp(buffer_size);
+    thrust::sequence(d_temp.begin(), d_temp.end());
+    const int values[] = {1, -5, 3, -8};
+    mod_index_functor mod_index(values);
+    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_temp.begin(), d_temp.end(), d_temp.begin(), mod_index);
+    thrust::transform(thrust::cuda::par.on(d_buffer.stream()), d_buffer.begin(), d_buffer.end(), d_temp.begin(), d_buffer.begin(), thrust::plus<int>());
     cudaStreamSynchronize(d_buffer.stream());
     print_log("Checkpoint 3");
 
