@@ -50,7 +50,7 @@ int main_kernel()
         // You *must not* copy all the images and only then do the computations
         // You must get the image from the pipeline as they arrive and launch computations right away
         // There are still ways to speeds this process of course 
-        cudaStream_t stream = stream.get_stream(i).value();
+        cudaStream_t stream = stream_pool.get_stream(i).value();
         images[i] = pipeline.get_image(i);
         int reduce = fix_image_gpu(images[i],stream);
         images[i].to_sort.total = reduce;
