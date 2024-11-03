@@ -5,8 +5,7 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-#include "thrust/async/reduce.h
-"
+#include "thrust/async/reduce.h"
 #define CUDA_CHECK(call) \
     { \
         cudaError_t err = call; \
