@@ -52,7 +52,7 @@ int main_indus()
         // You *must not* copy all the images and only then do the computations
         // You must get the image from the pipeline as they arrive and launch computations right away
         // There are still ways to speeds this process of course 
-        cudaStream_t stream = stream.get_stream(i).value();
+        cudaStream_t stream = stream_pool.get_stream(i).value();
         images[i] = pipeline.get_image(i);
         rmm::device_uvector<int> device_buffer(images[i].size(),stream);
         cudaMemcpyAsync(device_buffer.data(),images[i].buffer,images[i].size()*sizeof(int),cudaMemcpyHostToDevice,stream);
