@@ -32,7 +32,7 @@ struct mod_index_functor {
     int *d_ptr;
     int *values;
     __host__ __device__
-    int operator()(int& i) {
+    int operator()(int i) {
         d_ptr[i]+=values[i % 4];
     }
 };
