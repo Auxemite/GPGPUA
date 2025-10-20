@@ -110,6 +110,6 @@ GPU Industrial version :
 
 <!-- AUTHORS -->
 ## Authors
-Nicolas Regnier Vigouroux
-Ernest Bardon
+Nicolas Regnier Vigouroux<br />
+Ernest Bardon<br />
 Gregoire Vest
